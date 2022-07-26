@@ -1,7 +1,9 @@
 using System.Text.Json;
+using AutoFixture;
 using FluentAssertions;
 using LanguageExt;
 using LanguageExt.ClassInstances.Const;
+using LanguageExt.Common;
 using Newtonsoft.Json;
 using Xunit.Abstractions;
 using static LanguageExt.Prelude;
@@ -11,9 +13,11 @@ namespace Demo.LanguageExt.Tests;
 public class Tests
 {
     private readonly ITestOutputHelper _testOutputHelper;
+    private readonly Fixture _fixture;
 
     public Tests(ITestOutputHelper testOutputHelper)
     {
+        _fixture = new Fixture();
         _testOutputHelper = testOutputHelper;
     }
 
@@ -167,5 +171,117 @@ public class Tests
                 exception.Should().BeOfType<Exception>();
                 exception.Message.Should().Be("employee data is invalid");
             });
+    }
+    
+    [Fact]
+    public void TryCatchAsyncMadeEasier()
+    {
+        TryAsync<string> ReadFileAsync(string filePath) =>
+            TryAsync(async () =>
+            {
+                if (!File.Exists(filePath))
+                {
+                    throw new FileNotFoundException("file not found", filePath);
+                }
+
+                return await File.ReadAllTextAsync(filePath);
+            });
+
+        TryAsync<Employee> ProcessContentAsync(string content) =>
+            TryAsync(() =>
+            {
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    throw new Exception("invalid data");
+                }
+
+                var employee = JsonConvert.DeserializeObject<Employee>(content);
+                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name))
+                {
+                    throw new Exception("employee data is invalid");
+                }
+
+                return employee.AsTask();
+            });
+
+        ReadFileAsync("TestData/valid-employee.json").Bind(ProcessContentAsync).Match(
+            Succ: employee =>
+            {
+                employee.Should().NotBeNull();
+            },
+            Fail: exception =>
+            {
+                exception.Should().BeNull();
+            });
+        
+        ReadFileAsync("TestData/file-does-not-exist.json").Bind(ProcessContentAsync).Match(
+            Succ: employee =>
+            {
+                employee.Should().BeNull();
+            },
+            Fail: exception =>
+            {
+                exception.Should().BeOfType<FileNotFoundException>();
+            });
+        
+        ReadFileAsync("TestData/invalid-employee.json").Bind(ProcessContentAsync).Match(
+            Succ: employee =>
+            {
+                employee.Should().BeNull();
+            },
+            Fail: exception =>
+            {
+                exception.Should().BeOfType<Exception>();
+                exception.Message.Should().Be("employee data is invalid");
+            });
+        
+        
+    }
+
+    [Fact]
+    public void FunWithMemoization()
+    {
+        Func<Employee, string> generateHash = employee => $"{employee.GetHashCode()}-{Guid.NewGuid().ToString("N")}";
+        var cachedEmployeeId = memo(generateHash);
+
+        var employee = _fixture.Create<Employee>();
+        var generatedId = cachedEmployeeId(employee);
+
+        generatedId.Should().BeEquivalentTo(cachedEmployeeId(employee));
+    }
+
+    [Fact]
+    public void PartialFunctions()
+    {
+        Func<int, int, int> multiply = (a, b) => a * b;
+        Func<int, int> twoTimes = par(multiply, 2);
+
+        multiply(3, 4).Should().Be(12);
+        twoTimes(9).Should().Be(18);
+    }
+
+    [Fact]
+    public void ItsEitherThisOrThat()
+    {
+        //
+        // todo: is there a better way to return an `Either`?
+        // earlier versions have the `ToEither`, couldn't find a similar helper with the latest package
+        //
+        var customers = List(new Customer("1", "A"), new Customer("2", "B"));
+        Func<string, Either<Error, Customer>> getCustomerById = id =>
+        {
+            var customer = customers.FirstOrDefault(x => x.Id == id);
+            return customer == null ? Either<Error, Customer>.Left(Error.New("customer not found")) : Either<Error, Customer>.Right(customer);
+        };
+
+        getCustomerById("1").Match(
+            Left: error => error.Should().BeNull(),
+            Right: customer => customer.Should().NotBeNull()
+        );
+        
+        getCustomerById("3").Match(
+            Left: error => error.Message.Should().Be("customer not found"),
+            Right: customer => customer.Should().BeNull()
+        );
     }
 }
