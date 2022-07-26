@@ -1,11 +1,22 @@
+using System.Text.Json;
 using FluentAssertions;
 using LanguageExt;
+using LanguageExt.ClassInstances.Const;
+using Newtonsoft.Json;
+using Xunit.Abstractions;
 using static LanguageExt.Prelude;
 
 namespace Demo.LanguageExt.Tests;
 
 public class Tests
 {
+    private readonly ITestOutputHelper _testOutputHelper;
+
+    public Tests(ITestOutputHelper testOutputHelper)
+    {
+        _testOutputHelper = testOutputHelper;
+    }
+
     [Fact]
     public void RecordsAreCreatedEqually()
     {
@@ -18,8 +29,8 @@ public class Tests
     [Fact]
     public void ClassesAreNotCreatedEqually()
     {
-        var employee1 = new Employee{Id = "666", Name = "Cheranga"};
-        var employee2 = new Employee{Id = "666", Name = "Cheranga"};
+        var employee1 = new Employee { Id = "666", Name = "Cheranga" };
+        var employee2 = new Employee { Id = "666", Name = "Cheranga" };
 
         (employee1 == employee2).Should().BeFalse();
     }
@@ -39,15 +50,15 @@ public class Tests
         var invalidNumericData = "blah";
         var outputForInvalidNumericData = parseInt(invalidNumericData).Match(i => i, () => 0);
         outputForInvalidNumericData.Should().Be(0);
-        
+
         var validNumericData = "666";
         var outputForValidNumericData = parseInt(validNumericData).Match(i => i, () => 0);
         outputForValidNumericData.Should().Be(666);
-        
+
         // even can perform operations on them
         var transformedValidData = parseInt(validNumericData).Map(i => i * 2).Match(i => i, () => 0);
         transformedValidData.Should().Be(666 * 2);
-        
+
         var transformedInvalidData = parseInt(invalidNumericData).Map(i => i * 2).Match(i => i, () => 0);
         transformedInvalidData.Should().Be(0);
     }
@@ -61,8 +72,100 @@ public class Tests
         numbers1.Map(x => ++x).Should().BeEquivalentTo(Range(2, 5));
         (numbers1 == numbers2).Should().BeFalse();
 
-        
+
         // can use LanguageExt's `List` or `toList` to create immutable lists
         toList(Range(1, 5)).Map(x => ++x).Should<Lst<int>>().BeEquivalentTo(Range(2, 5));
+    }
+
+    [Fact]
+    public void FunctionComposition()
+    {
+        Func<int, int> add2 = i => i + 2;
+        Func<int, int> multiplyBy10 = i => i * 10;
+
+        Func<Option<int>, Option<int>> add1Safely = x => x.Match(Some: i => Option<int>.Some(i + 1), None: () => Option<int>.None);
+        Func<Option<int>, Option<int>> add2Safely = x => x.Match(Some: i => Option<int>.Some(i + 2), None: () => Option<int>.None);
+
+        Func<Option<Lst<string>>, Option<Lst<string>>> boilWater = x => x.Match(Some: lst => Option<Lst<string>>.Some(lst.Add("boil water")), None: Option<Lst<string>>.None);
+        Func<Option<Lst<string>>, Option<Lst<string>>> addCoffee = x => x.Match(Some: lst => Option<Lst<string>>.Some(lst.Add("add coffee")), None: Option<Lst<string>>.None);
+        Func<Option<Lst<string>>, Option<Lst<string>>> addMilk = x => x.Match(Some: lst => Option<Lst<string>>.Some(lst.Add("add milk")), None: Option<Lst<string>>.None);
+
+        compose(add2, multiplyBy10)(10).Should().Be(120);
+
+        compose(add1Safely, add2Safely)(Option<int>.None).Should<Option<int>>().Be(Option<int>.None);
+        compose(add1Safely, add2Safely)(Optional(10)).Should<Option<int>>().Be(Optional(13));
+
+        var coffeeMakingProcess = compose(boilWater, addCoffee, addMilk)(Optional(Lst<string>.Empty));
+        coffeeMakingProcess.IsSome.Should().BeTrue();
+        coffeeMakingProcess.IfSome(lst => lst.Should<Lst<string>>().BeEquivalentTo(toList(Seq("boil water", "add coffee", "add milk"))));
+    }
+
+    [Fact]
+    public void BindTest()
+    {
+        //TODO:
+    }
+
+    [Fact]
+    public void TryCatchMadeEasier()
+    {
+        Try<string> ReadFile(string filePath) =>
+            Try(() =>
+            {
+                if (!File.Exists(filePath))
+                {
+                    throw new FileNotFoundException("file not found", filePath);
+                }
+
+                return File.ReadAllText(filePath);
+            });
+
+        Try<Employee> ProcessContent(string content) =>
+            Try(() =>
+            {
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    throw new Exception("invalid data");
+                }
+
+                var employee = JsonConvert.DeserializeObject<Employee>(content);
+                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name))
+                {
+                    throw new Exception("employee data is invalid");
+                }
+
+                return employee;
+            });
+
+        ReadFile("TestData/valid-employee.json").Bind(ProcessContent).Match(
+            Succ: employee =>
+            {
+                employee.Should().NotBeNull();
+            },
+            Fail: exception =>
+            {
+                exception.Should().BeNull();
+            });
+        
+        ReadFile("TestData/file-does-not-exist.json").Bind(ProcessContent).Match(
+            Succ: employee =>
+            {
+                employee.Should().BeNull();
+            },
+            Fail: exception =>
+            {
+                exception.Should().BeOfType<FileNotFoundException>();
+            });
+        
+        ReadFile("TestData/invalid-employee.json").Bind(ProcessContent).Match(
+            Succ: employee =>
+            {
+                employee.Should().BeNull();
+            },
+            Fail: exception =>
+            {
+                exception.Should().BeOfType<Exception>();
+                exception.Message.Should().Be("employee data is invalid");
+            });
     }
 }

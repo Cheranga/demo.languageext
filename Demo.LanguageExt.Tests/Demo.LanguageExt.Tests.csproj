@@ -25,4 +25,13 @@
         </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="TestData\valid-employee.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="TestData\invalid-employee.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>
