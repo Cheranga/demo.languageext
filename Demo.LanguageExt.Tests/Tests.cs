@@ -1,24 +1,19 @@
-using System.Text.Json;
 using AutoFixture;
 using FluentAssertions;
 using LanguageExt;
-using LanguageExt.ClassInstances.Const;
 using LanguageExt.Common;
 using Newtonsoft.Json;
-using Xunit.Abstractions;
 using static LanguageExt.Prelude;
 
 namespace Demo.LanguageExt.Tests;
 
 public class Tests
 {
-    private readonly ITestOutputHelper _testOutputHelper;
     private readonly Fixture _fixture;
 
-    public Tests(ITestOutputHelper testOutputHelper)
+    public Tests()
     {
         _fixture = new Fixture();
-        _testOutputHelper = testOutputHelper;
     }
 
     [Fact]
@@ -283,5 +278,16 @@ public class Tests
             Left: error => error.Message.Should().Be("customer not found"),
             Right: customer => customer.Should().BeNull()
         );
+    }
+
+    [Fact]
+    public void FoldAndReduce()
+    {
+        var employees = toList(_fixture.CreateMany<Employee>());
+
+        var oldestFromFold = employees.Fold(employees.First(), (s, x) => s.Age > x.Age ? s : x);
+        var oldestFromReduce = employees.Reduce((s, x) => s.Age > x.Age ? s : x);
+
+        oldestFromFold.Should().BeEquivalentTo(oldestFromReduce);
     }
 }
