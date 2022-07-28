@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics.Contracts;
+using System.Text;
 using FluentAssertions;
 using LanguageExt;
 using LanguageExt.Common;
@@ -9,86 +10,83 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Demo.LanguageExt.Tests;
 
-public sealed class DataReader<TData> where TData : class
-{
-    private Aff<string> ReadFileContent(string filePath) =>
-        Aff(async () =>
-        {
-            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-            {
-                using (var reader = new StreamReader(stream))
-                {
-                    var content = await reader.ReadToEndAsync();
-                    if (string.IsNullOrWhiteSpace(content))
-                    {
-                        throw new Exception("empty file content");
-                    }
-
-                    return content;
-                }
-            }
-        });
-
-    private Aff<TData> DeserializeData(string content) =>
-        Aff(async () =>
-        {
-            using (var stream = new MemoryStream(Encoding.Default.GetBytes(content)))
-            {
-                var model = await JsonSerializer.DeserializeAsync<TData>(stream);
-                if (model == null)
-                {
-                    throw new Exception("cannot deserialize into required type");
-                }
-
-                return model;
-            }
-        });
-
-    public Aff<TData> GetData(string filePath) =>
-        (from content in ReadFileContent(filePath)
-            from data in DeserializeData(content)
-            select data)
-        .BiMap(
-            data => data,
-            error => error);
-}
-
 public class AdvancedTests
 {
     [Fact]
-    public async Task WhatTheAff3()
+    public async Task ReadValidData()
     {
         var dataReader = new DataReader<Employee>();
-        (await (dataReader.GetData("TestData/valid-employee.json")
+        (await (dataReader.DeserializeData("TestData/valid-employee.json")
                 .Run()))
             .Match(
                 employee => employee.Should().NotBeNull(),
                 error => error.Should().BeNull()
-                );
-        
-        
-        (await (dataReader.GetData("TestData/invalid-content.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().BeNull(),
-                error => error.ToException().Should().BeOfType<JsonException>()
-            );
-        
-        (await (dataReader.GetData("TestData/empty-content.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().BeNull(),
-                error => error.ToException().Should().BeOfType<Exception>()
-            );
-        
-        (await (dataReader.GetData("TestData/blah.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().BeNull(),
-                error => error.ToException().Should().BeOfType<FileNotFoundException>()
             );
     }
+
+    [Fact]
+    public async Task EmptyContent()
+    {
+        var dataReader = new DataReader<Employee>();
+        (await (dataReader.DeserializeData("TestData/empty-content.json")
+                .Run()))
+            .Match(
+                employee => employee.Should().BeNull(),
+                error => error.ToException().Message.Should().Be("empty file content")
+            );
+    }
+
+    [Fact]
+    public async Task InvalidContent()
+    {
+        var dataReader = new DataReader<Employee>();
+        (await (dataReader.DeserializeData("TestData/invalid-content.json")
+                .Run()))
+            .Match(
+                employee => employee.Should().BeNull(),
+                error =>
+                {
+                    error.ToException().Should().BeOfType<JsonException>();
+                });
+    }
+
+    [Fact]
+    public async Task FileDoesNotExist()
+    {
+        var dataReader = new DataReader<Employee>();
+        (await (dataReader.DeserializeData("TestData/blah.json")
+                .Run()))
+            .Match(
+                employee => employee.Should().BeNull(),
+                error =>
+                {
+                    var exception = error.ToException();
+                    return error.ToException().Should().BeOfType<FileNotFoundException>();
+                });
+    }
     
+    [Fact]
+    public async Task WhatTheAff3()
+    {
+       
+        var dataReader = new DataReader<Employee>();
+
+
+       
+
+       
+
+        (await (dataReader.DeserializeData("TestData/blah.json")
+                .Run()))
+            .Match(
+                employee => employee.Should().BeNull(),
+                error =>
+                {
+                    var exception = error.ToException();
+                    return error.ToException().Should().BeOfType<FileNotFoundException>();
+                });
+    }
+
     [Fact]
     public async Task WhatTheAff()
     {

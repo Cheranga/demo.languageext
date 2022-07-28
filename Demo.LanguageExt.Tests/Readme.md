@@ -1,5 +1,10 @@
 # Language Ext References
 
+## TODO
+
+* Add `AffMaybe` for `DataReader` operations.
+
+
 ## Aff and Fin
 
 * `Aff` is like a `TryAsync`
