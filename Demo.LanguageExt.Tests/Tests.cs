@@ -22,6 +22,8 @@ public class Tests
         var customer1 = new Customer("666", "Cheranga");
         var customer2 = new Customer("666", "Cheranga");
 
+        
+
         (customer1 == customer2).Should().BeTrue();
     }
 
@@ -97,6 +99,8 @@ public class Tests
         var coffeeMakingProcess = compose(boilWater, addCoffee, addMilk)(Optional(Lst<string>.Empty));
         coffeeMakingProcess.IsSome.Should().BeTrue();
         coffeeMakingProcess.IfSome(lst => lst.Should<Lst<string>>().BeEquivalentTo(toList(Seq("boil water", "add coffee", "add milk"))));
+
+       
     }
 
     [Fact]
