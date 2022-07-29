@@ -17,23 +17,23 @@ public sealed class MyJsonDataReader<TData> : IJsonDataReader<TData> where TData
     }
 
     private static Aff<Stream> OpenStream(string filePath, Func<FileMode> fileMode, Func<FileAccess> fileAccess, Func<FileShare> fileShare) =>
-        Aff(async () => await Task.FromResult<Stream>(new FileStream(filePath, fileMode(), fileAccess(), fileShare())));
+        AffMaybe<Stream>(async () => await new FileStream(filePath, fileMode(), fileAccess(), fileShare()).AsTask());
 
     private static Aff<Stream> OpenStreamToReadWithSharedAccess(string filePath) =>
         OpenStream(filePath, () => FileMode.Open, () => FileAccess.Read, () => FileShare.ReadWrite);
 
     private static Aff<StreamReader> OpenReader(Stream stream) =>
-        Aff(async () => await Task.FromResult(new StreamReader(stream)));
+        AffMaybe<StreamReader>(async () => await new StreamReader(stream).AsTask());
 
     private static Aff<Option<string>> ReadContent(StreamReader reader) =>
         AffMaybe<Option<string>>(async () =>
         {
             var content = await reader.ReadToEndAsync();
-            return string.IsNullOrWhiteSpace(content) ? Option<string>.None : Optional(content);
+            return string.IsNullOrWhiteSpace(content) ? None : Optional(content);
         });
 
     private static Aff<Stream> GetStreamForContent(string content) =>
-        AffMaybe<Stream>(async () => await Task.FromResult(new MemoryStream(Encoding.Default.GetBytes(content))));
+        AffMaybe<Stream>(async () => await new MemoryStream(Encoding.Default.GetBytes(content)).AsTask());
 
     private static Aff<Option<TData>> DeserializeTo(Stream stream) =>
         AffMaybe<Option<TData>>(async () => Optional(await JsonSerializer.DeserializeAsync<TData>(stream)));
