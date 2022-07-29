@@ -21,17 +21,14 @@ public class Tests
     {
         var customer1 = new Customer("666", "Cheranga");
         var customer2 = new Customer("666", "Cheranga");
-
-        
-
         (customer1 == customer2).Should().BeTrue();
     }
 
     [Fact]
     public void ClassesAreNotCreatedEqually()
     {
-        var employee1 = new Employee { Id = "666", Name = "Cheranga" };
-        var employee2 = new Employee { Id = "666", Name = "Cheranga" };
+        var employee1 = new Employee {Id = "666", Name = "Cheranga"};
+        var employee2 = new Employee {Id = "666", Name = "Cheranga"};
 
         (employee1 == employee2).Should().BeFalse();
     }
@@ -39,8 +36,8 @@ public class Tests
     [Fact]
     public void LanguageExtRecordsAreCreatedEqually()
     {
-        var employee1 = new RecordEmployee { Id = "666", Name = "Cheranga" };
-        var employee2 = new RecordEmployee { Id = "666", Name = "Cheranga" };
+        var employee1 = new RecordEmployee {Id = "666", Name = "Cheranga"};
+        var employee2 = new RecordEmployee {Id = "666", Name = "Cheranga"};
 
         (employee1 == employee2).Should().BeTrue();
     }
@@ -84,12 +81,12 @@ public class Tests
         Func<int, int> add2 = i => i + 2;
         Func<int, int> multiplyBy10 = i => i * 10;
 
-        Func<Option<int>, Option<int>> add1Safely = x => x.Match(Some: i => Option<int>.Some(i + 1), None: () => Option<int>.None);
-        Func<Option<int>, Option<int>> add2Safely = x => x.Match(Some: i => Option<int>.Some(i + 2), None: () => Option<int>.None);
+        Func<Option<int>, Option<int>> add1Safely = x => x.Match(i => Option<int>.Some(i + 1), () => Option<int>.None);
+        Func<Option<int>, Option<int>> add2Safely = x => x.Match(i => Option<int>.Some(i + 2), () => Option<int>.None);
 
-        Func<Option<Lst<string>>, Option<Lst<string>>> boilWater = x => x.Match(Some: lst => Option<Lst<string>>.Some(lst.Add("boil water")), None: Option<Lst<string>>.None);
-        Func<Option<Lst<string>>, Option<Lst<string>>> addCoffee = x => x.Match(Some: lst => Option<Lst<string>>.Some(lst.Add("add coffee")), None: Option<Lst<string>>.None);
-        Func<Option<Lst<string>>, Option<Lst<string>>> addMilk = x => x.Match(Some: lst => Option<Lst<string>>.Some(lst.Add("add milk")), None: Option<Lst<string>>.None);
+        Func<Option<Lst<string>>, Option<Lst<string>>> boilWater = x => x.Match(lst => Option<Lst<string>>.Some(lst.Add("boil water")), Option<Lst<string>>.None);
+        Func<Option<Lst<string>>, Option<Lst<string>>> addCoffee = x => x.Match(lst => Option<Lst<string>>.Some(lst.Add("add coffee")), Option<Lst<string>>.None);
+        Func<Option<Lst<string>>, Option<Lst<string>>> addMilk = x => x.Match(lst => Option<Lst<string>>.Some(lst.Add("add milk")), Option<Lst<string>>.None);
 
         compose(add2, multiplyBy10)(10).Should().Be(120);
 
@@ -99,8 +96,6 @@ public class Tests
         var coffeeMakingProcess = compose(boilWater, addCoffee, addMilk)(Optional(Lst<string>.Empty));
         coffeeMakingProcess.IsSome.Should().BeTrue();
         coffeeMakingProcess.IfSome(lst => lst.Should<Lst<string>>().BeEquivalentTo(toList(Seq("boil water", "add coffee", "add milk"))));
-
-       
     }
 
     [Fact]
@@ -112,129 +107,87 @@ public class Tests
     [Fact]
     public void TryCatchMadeEasier()
     {
-        Try<string> ReadFile(string filePath) =>
-            Try(() =>
+        Try<string> ReadFile(string filePath)
+        {
+            return Try(() =>
             {
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException("file not found", filePath);
-                }
+                if (!File.Exists(filePath)) throw new FileNotFoundException("file not found", filePath);
 
                 return File.ReadAllText(filePath);
             });
+        }
 
-        Try<Employee> ProcessContent(string content) =>
-            Try(() =>
+        Try<Employee> ProcessContent(string content)
+        {
+            return Try(() =>
             {
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    throw new Exception("invalid data");
-                }
+                if (string.IsNullOrWhiteSpace(content)) throw new Exception("invalid data");
 
                 var employee = JsonConvert.DeserializeObject<Employee>(content);
-                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name))
-                {
-                    throw new Exception("employee data is invalid");
-                }
+                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name)) throw new Exception("employee data is invalid");
 
                 return employee;
             });
+        }
 
         ReadFile("TestData/valid-employee.json").Bind(ProcessContent).Match(
-            Succ: employee =>
-            {
-                employee.Should().NotBeNull();
-            },
-            Fail: exception =>
-            {
-                exception.Should().BeNull();
-            });
-        
+            employee => { employee.Should().NotBeNull(); },
+            exception => { exception.Should().BeNull(); });
+
         ReadFile("TestData/file-does-not-exist.json").Bind(ProcessContent).Match(
-            Succ: employee =>
-            {
-                employee.Should().BeNull();
-            },
-            Fail: exception =>
-            {
-                exception.Should().BeOfType<FileNotFoundException>();
-            });
-        
+            employee => { employee.Should().BeNull(); },
+            exception => { exception.Should().BeOfType<FileNotFoundException>(); });
+
         ReadFile("TestData/invalid-employee.json").Bind(ProcessContent).Match(
-            Succ: employee =>
-            {
-                employee.Should().BeNull();
-            },
-            Fail: exception =>
+            employee => { employee.Should().BeNull(); },
+            exception =>
             {
                 exception.Should().BeOfType<Exception>();
                 exception.Message.Should().Be("employee data is invalid");
             });
     }
-    
+
     [Fact]
     public void TryCatchAsyncMadeEasier()
     {
-        TryAsync<string> ReadFileAsync(string filePath) =>
-            TryAsync(async () =>
+        TryAsync<string> ReadFileAsync(string filePath)
+        {
+            return TryAsync(async () =>
             {
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException("file not found", filePath);
-                }
+                if (!File.Exists(filePath)) throw new FileNotFoundException("file not found", filePath);
 
                 return await File.ReadAllTextAsync(filePath);
             });
+        }
 
-        TryAsync<Employee> ProcessContentAsync(string content) =>
-            TryAsync(() =>
+        TryAsync<Employee> ProcessContentAsync(string content)
+        {
+            return TryAsync(() =>
             {
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    throw new Exception("invalid data");
-                }
+                if (string.IsNullOrWhiteSpace(content)) throw new Exception("invalid data");
 
                 var employee = JsonConvert.DeserializeObject<Employee>(content);
-                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name))
-                {
-                    throw new Exception("employee data is invalid");
-                }
+                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name)) throw new Exception("employee data is invalid");
 
                 return employee.AsTask();
             });
+        }
 
         ReadFileAsync("TestData/valid-employee.json").Bind(ProcessContentAsync).Match(
-            Succ: employee =>
-            {
-                employee.Should().NotBeNull();
-            },
-            Fail: exception =>
-            {
-                exception.Should().BeNull();
-            });
-        
+            employee => { employee.Should().NotBeNull(); },
+            exception => { exception.Should().BeNull(); });
+
         ReadFileAsync("TestData/file-does-not-exist.json").Bind(ProcessContentAsync).Match(
-            Succ: employee =>
-            {
-                employee.Should().BeNull();
-            },
-            Fail: exception =>
-            {
-                exception.Should().BeOfType<FileNotFoundException>();
-            });
-        
+            employee => { employee.Should().BeNull(); },
+            exception => { exception.Should().BeOfType<FileNotFoundException>(); });
+
         ReadFileAsync("TestData/invalid-employee.json").Bind(ProcessContentAsync).Match(
-            Succ: employee =>
-            {
-                employee.Should().BeNull();
-            },
-            Fail: exception =>
+            employee => { employee.Should().BeNull(); },
+            exception =>
             {
                 exception.Should().BeOfType<Exception>();
                 exception.Message.Should().Be("employee data is invalid");
             });
-        
-        
     }
 
     [Fact]
@@ -253,7 +206,7 @@ public class Tests
     public void PartialFunctions()
     {
         Func<int, int, int> multiply = (a, b) => a * b;
-        Func<int, int> twoTimes = par(multiply, 2);
+        var twoTimes = par(multiply, 2);
 
         multiply(3, 4).Should().Be(12);
         twoTimes(9).Should().Be(18);
@@ -277,7 +230,7 @@ public class Tests
             Left: error => error.Should().BeNull(),
             Right: customer => customer.Should().NotBeNull()
         );
-        
+
         getCustomerById("3").Match(
             Left: error => error.Message.Should().Be("customer not found"),
             Right: customer => customer.Should().BeNull()

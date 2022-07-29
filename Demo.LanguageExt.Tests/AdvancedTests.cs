@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.Contracts;
-using System.Text;
+﻿using System.Text;
 using FluentAssertions;
 using LanguageExt;
 using LanguageExt.Common;
@@ -19,6 +18,7 @@ public class AdvancedTests
     {
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
         var operation = await dataReader.DeserializeData("TestData/valid-employee.json").Run();
+
         operation.IsSucc.Should().BeTrue();
         operation.IfSucc(employee => employee.Should().NotBeNull());
     }
@@ -56,8 +56,8 @@ public class AdvancedTests
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
 
 
-        (await (dataReader.DeserializeData("TestData/blah.json")
-                .Run()))
+        (await dataReader.DeserializeData("TestData/blah.json")
+                .Run())
             .Match(
                 employee => employee.Should().BeNull(),
                 error =>
@@ -71,35 +71,35 @@ public class AdvancedTests
     public async Task WhatTheAff()
     {
         // `Aff` is like a `TryAsync`
-        Aff<Option<string>> ReadFileContent(string filePath) =>
-            AffMaybe<Option<string>>(async () =>
+        Aff<Option<string>> ReadFileContent(string filePath)
+        {
+            return AffMaybe<Option<string>>(async () =>
             {
                 var content = await File.ReadAllTextAsync(filePath);
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    throw new Exception("empty file content");
-                }
+                if (string.IsNullOrWhiteSpace(content)) throw new Exception("empty file content");
 
                 return Optional(content);
             });
+        }
 
-        Eff<Stream> GetStream(string content) =>
-            Eff<Stream>(() => new MemoryStream(Encoding.Default.GetBytes(content)));
+        Eff<Stream> GetStream(string content)
+        {
+            return Eff<Stream>(() => new MemoryStream(Encoding.Default.GetBytes(content)));
+        }
 
-        Aff<Option<TData>> GetEmployee<TData>(string content) =>
-            AffMaybe<Option<TData>>(async () =>
+        Aff<Option<TData>> GetEmployee<TData>(string content)
+        {
+            return AffMaybe<Option<TData>>(async () =>
             {
                 using (var stream = new MemoryStream(Encoding.Default.GetBytes(content)))
                 {
                     var model = await JsonSerializer.DeserializeAsync<TData>(stream);
-                    if (model == null)
-                    {
-                        throw new Exception("cannot deserialize into required type");
-                    }
+                    if (model == null) throw new Exception("cannot deserialize into required type");
 
                     return Optional(model);
                 }
             });
+        }
 
         // valid content in file
         (await (from readFileOperation in ReadFileContent("TestData/valid-employee.json")
@@ -166,32 +166,30 @@ public class AdvancedTests
     [Fact]
     public async Task WhatTheAff2()
     {
-        Aff<string> ReadFileContent(string filePath) =>
-            Aff(async () =>
+        Aff<string> ReadFileContent(string filePath)
+        {
+            return Aff(async () =>
             {
                 var content = await File.ReadAllTextAsync(filePath);
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    throw new Exception("empty file content");
-                }
+                if (string.IsNullOrWhiteSpace(content)) throw new Exception("empty file content");
 
                 return content;
             });
+        }
 
-        Aff<TData> GetData<TData>(string content) =>
-            Aff<TData>(async () =>
+        Aff<TData> GetData<TData>(string content)
+        {
+            return Aff<TData>(async () =>
             {
                 using (var stream = new MemoryStream(Encoding.Default.GetBytes(content)))
                 {
                     var model = await JsonSerializer.DeserializeAsync<TData>(stream);
-                    if (model == null)
-                    {
-                        throw new Exception("cannot deserialize into required type");
-                    }
+                    if (model == null) throw new Exception("cannot deserialize into required type");
 
                     return model;
                 }
             });
+        }
 
         (await (from readFileOperation in ReadFileContent("TestData/valid-employee.json")
                     from employeeData in GetData<Employee>(readFileOperation)
@@ -229,33 +227,28 @@ public class AdvancedTests
     [Fact]
     public void TryAsyncTests()
     {
-        TryAsync<string> ReadFileAsync(string filePath) =>
-            TryAsync(async () =>
+        TryAsync<string> ReadFileAsync(string filePath)
+        {
+            return TryAsync(async () =>
             {
-                if (!File.Exists(filePath))
-                {
-                    throw new FileNotFoundException("file not found", filePath);
-                }
+                if (!File.Exists(filePath)) throw new FileNotFoundException("file not found", filePath);
 
                 return await File.ReadAllTextAsync(filePath);
             });
+        }
 
-        TryAsync<Employee> ProcessContentAsync(string content) =>
-            TryAsync(() =>
+        TryAsync<Employee> ProcessContentAsync(string content)
+        {
+            return TryAsync(() =>
             {
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    throw new Exception("invalid data");
-                }
+                if (string.IsNullOrWhiteSpace(content)) throw new Exception("invalid data");
 
                 var employee = JsonConvert.DeserializeObject<Employee>(content);
-                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name))
-                {
-                    throw new Exception("employee data is invalid");
-                }
+                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name)) throw new Exception("employee data is invalid");
 
                 return employee.AsTask();
             });
+        }
 
 
         ReadFileAsync("TestData/valid-employee.json")
