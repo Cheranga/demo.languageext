@@ -31,7 +31,7 @@ public class TryAsyncTests
                 }
 
                 var employee = JsonConvert.DeserializeObject<Employee>(content);
-                if (string.IsNullOrWhiteSpace(employee?.Id) || string.IsNullOrWhiteSpace(employee?.Name))
+                if (string.IsNullOrWhiteSpace(employee.Id) || string.IsNullOrWhiteSpace(employee.Name))
                 {
                     throw new Exception("employee data is invalid");
                 }
@@ -56,12 +56,24 @@ public class TryAsyncTests
                 exception.Message.Should().Be("employee data is invalid");
             });
 
+        await ReadFileAsync("TestData/empty-content.json").Bind(ProcessContentAsync).Match(
+            Succ: employee => { employee.Should().BeNull(); },
+            Fail: exception =>
+            {
+                exception.Should().BeOfType<Exception>();
+                exception.Message.Should().Be("invalid data");
+            });
+
         // if you would like to return from the above operations, you will need to obviously return a single type, for that you can do the below
         var operation = await ReadFileAsync("TestData/valid-employee.json")
             .Bind(ProcessContentAsync)
             .Match(
                 Either<Error, Employee>.Right,
-                exception => Either<Error, Employee>.Left(Error.New(exception)));
+                exception =>
+                {
+                    // probably you could add a logging operation in here
+                    return Either<Error, Employee>.Left(Error.New(exception));
+                });
 
         operation.IsRight.Should().BeTrue();
         operation.IfRight(employee => employee.Should().NotBeNull());
