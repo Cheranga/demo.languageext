@@ -3,6 +3,8 @@ using System.Text;
 using FluentAssertions;
 using LanguageExt;
 using LanguageExt.Common;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Newtonsoft.Json;
 using static LanguageExt.Prelude;
 using JsonException = System.Text.Json.JsonException;
@@ -15,7 +17,7 @@ public class AdvancedTests
     [Fact]
     public async Task ReadValidData()
     {
-        var dataReader = new DataReader<Employee>();
+        var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
         (await (dataReader.DeserializeData("TestData/valid-employee.json")
                 .Run()))
             .Match(
@@ -27,7 +29,7 @@ public class AdvancedTests
     [Fact]
     public async Task EmptyContent()
     {
-        var dataReader = new DataReader<Employee>();
+        var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
         (await (dataReader.DeserializeData("TestData/empty-content.json")
                 .Run()))
             .Match(
@@ -39,7 +41,7 @@ public class AdvancedTests
     [Fact]
     public async Task InvalidContent()
     {
-        var dataReader = new DataReader<Employee>();
+        var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
         (await (dataReader.DeserializeData("TestData/invalid-content.json")
                 .Run()))
             .Match(
@@ -53,7 +55,7 @@ public class AdvancedTests
     [Fact]
     public async Task FileDoesNotExist()
     {
-        var dataReader = new DataReader<Employee>();
+        var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
         (await (dataReader.DeserializeData("TestData/blah.json")
                 .Run()))
             .Match(
@@ -69,7 +71,7 @@ public class AdvancedTests
     public async Task WhatTheAff3()
     {
        
-        var dataReader = new DataReader<Employee>();
+        var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
 
 
        
