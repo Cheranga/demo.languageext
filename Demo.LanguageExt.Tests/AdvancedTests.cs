@@ -18,65 +18,43 @@ public class AdvancedTests
     public async Task ReadValidData()
     {
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
-        (await (dataReader.DeserializeData("TestData/valid-employee.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().NotBeNull(),
-                error => error.Should().BeNull()
-            );
+        var operation = await dataReader.DeserializeData("TestData/valid-employee.json").Run();
+        operation.IsSucc.Should().BeTrue();
+        operation.IfSucc(employee => employee.Should().NotBeNull());
     }
 
     [Fact]
     public async Task EmptyContent()
     {
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
-        (await (dataReader.DeserializeData("TestData/empty-content.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().BeNull(),
-                error => error.ToException().Message.Should().Be("empty file content")
-            );
+        var operation = await dataReader.DeserializeData("TestData/empty-content.json").Run();
+        operation.IsFail.Should().BeTrue();
+        operation.IfFail(error => error.ToException().Message.Should().Be("empty file content"));
     }
 
     [Fact]
     public async Task InvalidContent()
     {
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
-        (await (dataReader.DeserializeData("TestData/invalid-content.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().BeNull(),
-                error =>
-                {
-                    error.ToException().Should().BeOfType<JsonException>();
-                });
+        var operation = await dataReader.DeserializeData("TestData/invalid-content.json").Run();
+        operation.IsFail.Should().BeTrue();
+        operation.IfFail(error => error.ToException().Should().BeOfType<JsonException>());
     }
 
     [Fact]
     public async Task FileDoesNotExist()
     {
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
-        (await (dataReader.DeserializeData("TestData/blah.json")
-                .Run()))
-            .Match(
-                employee => employee.Should().BeNull(),
-                error =>
-                {
-                    var exception = error.ToException();
-                    return error.ToException().Should().BeOfType<FileNotFoundException>();
-                });
+        var operation = await dataReader.DeserializeData("TestData/blah.json").Run();
+        operation.IsFail.Should().BeTrue();
+        operation.IfFail(error => error.ToException().Should().BeOfType<FileNotFoundException>());
     }
-    
+
     [Fact]
     public async Task WhatTheAff3()
     {
-       
         var dataReader = new MyJsonDataReader<Employee>(Mock.Of<ILogger<MyJsonDataReader<Employee>>>());
 
-
-       
-
-       
 
         (await (dataReader.DeserializeData("TestData/blah.json")
                 .Run()))
