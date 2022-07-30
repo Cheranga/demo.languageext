@@ -77,7 +77,7 @@ public class AdvancedTests
             {
                 var content = await File.ReadAllTextAsync(filePath);
                 if (string.IsNullOrWhiteSpace(content)) throw new Exception("empty file content");
-
+                
                 return Optional(content);
             });
         }
