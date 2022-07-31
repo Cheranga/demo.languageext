@@ -1,5 +1,4 @@
 ﻿using FluentAssertions;
-using LanguageExt;
 
 namespace Demo.LanguageExt.Tests;
 

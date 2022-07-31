@@ -4,7 +4,6 @@
 
 * Add `AffMaybe` for `DataReader` operations.
 
-
 ## Aff and Fin
 
 * `Aff` is like a `TryAsync`
