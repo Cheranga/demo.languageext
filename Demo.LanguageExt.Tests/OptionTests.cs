@@ -1,7 +1,6 @@
 ﻿using FluentAssertions;
 using LanguageExt;
 using LanguageExt.Common;
-using Xunit.Abstractions;
 using static LanguageExt.Prelude;
 
 namespace Demo.LanguageExt.Tests;
@@ -50,7 +49,6 @@ public class OptionTests
         // get employee
         // add the employee to customer collection
         //
-
         var employees = Seq(Range(1, 11).Select(x => new Employee {Id = x.ToString(), Name = $"employee-{x}"}));
         var customers = Seq(Range(1, 10).Select(x => new Customer(x.ToString(), $"customer-{x}")));
 
