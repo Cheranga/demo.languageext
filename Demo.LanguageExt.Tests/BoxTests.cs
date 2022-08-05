@@ -87,7 +87,7 @@ public class BoxTests
 
         Func<Box<Employee>, Box<Customer>> MapToCustomer2 = x => x.Map(e => new Customer(e.Id, e.Name));
 
-        var boxedEmployee = new Box<Employee>(new Employee { Id = "1", Name = "Cheranga" });
+        var boxedEmployee = new Box<Employee>(new Employee { Id = "2", Name = "Cheranga" });
         var customer1 = (from emp in boxedEmployee
             from cust in ToCustomerBox(emp)
             select cust).Data;
@@ -95,7 +95,18 @@ public class BoxTests
         var customer2 = from customer in MapToCustomer2(boxedEmployee) //boxedEmployee.Bind(emp => new Box<Customer>(new Customer(emp.Id, emp.Name)))
             select customer;
 
+        Func<Employee, Box<Customer>> toVipCustomer = emp => emp.Id == "1" ? new Box<Customer>() : new Box<Customer>(new Customer(emp.Id, emp.Name));
+        Func<Customer, Box<Customer>> toLocalVipCustomer = x => new Box<Customer>(x);
 
+        var customer3 = from emp in boxedEmployee
+            from vipCustomer in toVipCustomer(emp)
+            from localCustomer in toLocalVipCustomer(vipCustomer)
+            select localCustomer;
 
+        var customer4 = boxedEmployee.Bind(toVipCustomer).Bind(toLocalVipCustomer);
+
+        var employee = boxedEmployee.Map(x => new Customer(x.Id, x.Name))
+            .Map(x => new Employee { Id = x.Id, Name = x.Name })
+            .Select(x => x);
     }
 }
