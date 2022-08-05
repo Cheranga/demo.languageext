@@ -31,6 +31,36 @@ public static class BoxExtensions
 
         return new Box<TReturn>(mapper(box.Data));
     }
+
+    public static Box<TReturn> Map<TData, TReturn>(this Box<TData> box, Func<TData, TReturn> mapper) =>
+        box.Select(mapper);
+
+    public static Box<TReturn> Bind<TData, TReturn>(this Box<TData> box, Func<TData, Box<TReturn>> binder)
+    {
+        if (box.IsEmpty)
+        {
+            return new Box<TReturn>();
+        }
+
+        return binder(box.Data);
+    }
+
+    public static Box<TC> SelectMany<TA, TB, TC>(this Box<TA> box, Func<TA, Box<TB>> mapper, Func<TA, TB, TC> project)
+    {
+        if (box.IsEmpty)
+        {
+            return new Box<TC>();
+        }
+
+        var mappedItem = mapper(box.Data);
+        if (mappedItem.IsEmpty)
+        {
+            return new Box<TC>();
+        }
+
+        var projectedItem = project(box.Data, mappedItem.Data);
+        return new Box<TC>(projectedItem);
+    }
 }
 
 public class BoxTests
@@ -44,5 +74,28 @@ public class BoxTests
         (from emp in emptyEmployeeBox select emp.Name).IsEmpty.Should().BeTrue();
 
         (from che in cheranga select che.Name).Data.Should().Be("Cheranga");
+    }
+
+    [Fact]
+    public void BindTests()
+    {
+        Func<Employee, Box<Customer>> ToCustomerBox = emp => new Box<Employee>(emp).Map(x =>
+        {
+            var customer = new Customer(x.Id, x.Name);
+            return customer;
+        });
+
+        Func<Box<Employee>, Box<Customer>> MapToCustomer2 = x => x.Map(e => new Customer(e.Id, e.Name));
+
+        var boxedEmployee = new Box<Employee>(new Employee { Id = "1", Name = "Cheranga" });
+        var customer1 = (from emp in boxedEmployee
+            from cust in ToCustomerBox(emp)
+            select cust).Data;
+
+        var customer2 = from customer in MapToCustomer2(boxedEmployee) //boxedEmployee.Bind(emp => new Box<Customer>(new Customer(emp.Id, emp.Name)))
+            select customer;
+
+
+
     }
 }
